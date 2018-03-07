@@ -3,10 +3,11 @@
 [![Build Status](https://travis-ci.org/Borda/pyGCO.svg?branch=master)](https://travis-ci.org/Borda/pyGCO)
 [![codecov](https://codecov.io/gh/Borda/pyGCO/branch/master/graph/badge.svg)](https://codecov.io/gh/Borda/pyGCO)
 [![Build status](https://ci.appveyor.com/api/projects/status/ovfsssqdb1c0xg0l?svg=true)](https://ci.appveyor.com/project/Borda/pygco)
-[![Codeship Status for Borda/pygco](https://app.codeship.com/projects/a130c6b0-c251-0134-f78c-26017824c46f/status?branch=master)](https://app.codeship.com/projects/197423)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4b875e6fbf3349e18a139a2a005736a4)](https://www.codacy.com/app/Borda/pyGCO?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Borda/pyGCO&amp;utm_campaign=Badge_Grade)
 [![Run Status](https://api.shippable.com/projects/5883a5e12a5d900f00b8b9ff/badge?branch=master)](https://app.shippable.com/github/Borda/pyGCO)
 [![Coverage Badge](https://api.shippable.com/projects/5883a5e12a5d900f00b8b9ff/coverageBadge?branch=master)](https://app.shippable.com/github/Borda/pyGCO)
 [![Maintainability](https://api.codeclimate.com/v1/badges/9c11485e2f4f23189069/maintainability)](https://codeclimate.com/github/Borda/pyGCO/maintainability)
+[![Codeship Status for Borda/pygco](https://app.codeship.com/projects/a130c6b0-c251-0134-f78c-26017824c46f/status?branch=master)](https://app.codeship.com/projects/197423)
 
 The original wrapper is [pygco](https://github.com/yujiali/pygco)
 
@@ -30,7 +31,7 @@ This wrapper is composed of two parts, a C wrapper and a python wrapper.
 1. compile gco-v3.0 and the C wrapper using `make`
 1. compile test_wrapper using `make test_wrapper`
 1. run the C test code `./test_wrapper` (now you have the C wrapper ready)
-```
+```bash
 make download
 make all
 make test_wrapper
@@ -38,7 +39,7 @@ make test_wrapper
 ```
 
 The successful run should return:
-```
+```bash
 labels = [ 0 2 2 1 ], energy=19
 data energy=15, smooth energy=4
 ```
@@ -51,7 +52,7 @@ To include pygco in your code, simply import pygco module. See the documentation
 
 Clone repository and enter folder, then
 
-```
+```bash
 pip install -r requirements.txt
 python setup.py install
 ```
