@@ -28,8 +28,6 @@ except ImportError:
     from distutils.core import setup, Extension, Command, find_packages
     from distutils.command.build_ext import build_ext
 
-PACKAGE_NAME = 'gco-v3.0.zip'
-GCO_LIB = 'http://vision.csd.uwo.ca/code/' + PACKAGE_NAME
 LOCAL_SOURCE = 'gco_source'
 
 
@@ -53,31 +51,6 @@ class CustomBuildExtCommand(build_ext):
         # Call original build_ext command
         build_ext.run(self)
 
-
-try:
-    import urllib3
-    import zipfile
-    import shutil
-    # download code
-    if not os.path.exists(PACKAGE_NAME):
-        http = urllib3.PoolManager()
-        with http.request('GET', GCO_LIB, preload_content=False) as resp, \
-                open(PACKAGE_NAME, 'wb') as out_file:
-            shutil.copyfileobj(resp, out_file)
-        resp.release_conn()
-
-    # try:
-    #     if not os.path.exists(LOCAL_SOURCE):
-    #         os.mkdir(LOCAL_SOURCE)
-    # except:
-    #     print('no permission to create a directory')
-
-    # unzip the package
-    with zipfile.ZipFile(PACKAGE_NAME, 'r') as zip_ref:
-        zip_ref.extractall(LOCAL_SOURCE)
-except:
-    logging.warning('Fail source download or unzip, so last VCS will be used.')
-    #logging.warning(traceback.format_exc())
 
 source_files = ['graph.cpp', 'maxflow.cpp',
                 'LinkedBlockList.cpp', 'GCoptimization.cpp']
