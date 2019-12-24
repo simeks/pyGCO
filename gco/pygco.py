@@ -44,72 +44,45 @@ class GCO(object):
     def __init__(self):
         pass
 
-    def create_general_graph(self, num_sites, num_labels, energy_is_float=False):
+    def create_general_graph(self, num_sites, num_labels):
         """ Create a general graph with specified number of sites and labels.
-        If energy_is_float is set to True, then automatic scaling and rounding
-        will be applied to convert all energies to integers when running graph
-        cuts. Then the final energy will be converted back to floats after the
-        computation.
 
         :param num_sites:
         :param num_labels:
-        :param energy_is_float:
         """
         self.temp_array = np.empty(1, dtype=np.intc)
-        self.energy_temp_array = np.empty(1, dtype=np.longlong)
+        self.energy_temp_array = np.empty(1, dtype=np.float64)
         _cgco.gcoCreateGeneralGraph(np.intc(num_sites), np.intc(num_labels),
                                     self.temp_array)
 
         self.handle = self.temp_array[0]
         self.nb_sites = np.intc(num_sites)
         self.nb_labels = np.intc(num_labels)
-        self.energy_is_float = energy_is_float
         self.smooth_cost_fun = None
 
     def destroy_graph(self):
         _cgco.gcoDestroyGraph(self.handle)
 
     def _convert_unary_array(self, e):
-        if self.energy_is_float:
-            return (e * _UNARY_FLOAT_PRECISION).astype(np.intc)
-        else:
-            return e.astype(np.intc)
+        return e.astype(np.float64)
 
     def _convert_unary_term(self, e):
-        if self.energy_is_float:
-            return np.intc(e * _UNARY_FLOAT_PRECISION)
-        else:
-            return np.intc(e)
-
+        return np.float64(e)
+        
     def _convert_pairwise_array(self, e):
-        if self.energy_is_float:
-            return (e * _PAIRWISE_FLOAT_PRECISION).astype(np.intc)
-        else:
-            return e.astype(np.intc)
+        return e.astype(np.float64)
 
     def _convert_pairwise_term(self, e):
-        if self.energy_is_float:
-            return np.intc(e * _PAIRWISE_FLOAT_PRECISION)
-        else:
-            return np.intc(e)
+        return np.float64(e)
 
     def _convert_smooth_cost_array(self, e):
-        if self.energy_is_float:
-            return (e * _SMOOTH_COST_PRECISION).astype(np.intc)
-        else:
-            return e.astype(np.intc)
+        return e.astype(np.float64)
 
     def _convert_smooth_cost_term(self, e):
-        if self.energy_is_float:
-            return np.intc(e * _SMOOTH_COST_PRECISION)
-        else:
-            return np.intc(e)
+        return np.float64(e)
 
     def _convert_energy_back(self, e):
-        if self.energy_is_float:
-            return float(e) / _UNARY_FLOAT_PRECISION
-        else:
-            return e
+        return np.float64(e)
 
     def set_data_cost(self, unary):
         """Set unary potentials, unary should be a matrix of size
@@ -259,94 +232,6 @@ class GCO(object):
         _cgco.gcoInitLabelAtSite(self.handle, np.intc(site), np.intc(label))
 
 
-def cut_general_graph(edges, edge_weights, unary_cost, pairwise_cost=None,
-                      n_iter=-1, algorithm='expansion', init_labels=None,
-                      down_weight_factor=None):
-    """
-    Apply multi-label graph cuts to arbitrary graph given by `edges`.
-
-    Parameters
-    ----------
-    edges: ndarray, int32, shape=(n_edges, 2)
-        Rows correspond to edges in graph, given as vertex indices. The indices
-        in the first column should always be smaller than corresponding indices
-        from the second column.
-    edge_weights: ndarray, int32 or float64, shape=(n_edges)
-        Weights for each edge, listed in the same order as edges.
-    unary_cost: ndarray, int32 or float64, shape=(n_vertices, n_labels)
-        Unary potentials
-    pairwise_cost: ndarray, int32 or float64, shape=(n_labels, n_labels)
-        Pairwise potentials for label compatibility
-    n_iter: int, (default=-1)
-        Number of iterations. n_iter=-1 means run the algorithm until convergence.
-    algorithm: string, `expansion` or `swap`, default=expansion
-        Whether to perform alpha-expansion or alpha-beta-swaps.
-    init_labels: ndarray, int32, shape=(n_vertices). Initial labels.
-    down_weight_factor: float or None. Used to scale down the energy terms, so
-        that they won't overflow once converted to integers. Default to None,
-        where this factor is set automatically.
-
-    Return
-    ------
-    labels: ndarray, int32, shape=(n_vertices) the resulting list of labels
-        after optimization.
-
-    Note all the node indices start from 0.
-
-    >>> edges = np.array([(i, i + 1) for i in range(4)] + # first row
-    ...                  [(i, i + 5) for i in range(5)] + # inter rows
-    ...                  [(i, i + 1) for i in range(5, 9)]) # second row
-    >>> weights = np.array([1] * len(edges))
-    >>> unary = np.zeros((10, 2))
-    >>> unary[5:, 0] = 1.
-    >>> unary[:5, 1] = 1.
-    >>> pairwise = (1 - np.eye(unary.shape[1])) * 0.5
-    >>> labels = cut_general_graph(edges, weights, unary, pairwise)
-    >>> labels
-    array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1], dtype=int32)
-    """
-    energy_is_float = (unary_cost.dtype in _float_types) or \
-        (edge_weights.dtype in _float_types) or \
-        (pairwise_cost.dtype in _float_types)
-
-    if not energy_is_float and not (
-            (unary_cost.dtype in _int_types) and
-            (edge_weights.dtype in _int_types) and
-            (pairwise_cost.dtype in _int_types)):
-        raise DataTypeNotSupportedError(
-            "Unary and pairwise potentials should have consistent types. "
-            "Either integers of floats. Mixed types or other types are not "
-            "supported.")
-
-    n_sites, n_labels = unary_cost.shape
-
-    if down_weight_factor is None:
-        down_weight_factor = max(np.abs(unary_cost).max(),
-                                 np.abs(edge_weights).max() *
-                                 pairwise_cost.max()) + _SMALL_CONSTANT
-
-    gc = GCO()
-    gc.create_general_graph(n_sites, n_labels, energy_is_float)
-    gc.set_data_cost(unary_cost / down_weight_factor)
-    gc.set_all_neighbors(edges[:, 0], edges[:, 1],
-                         edge_weights / down_weight_factor)
-    if pairwise_cost is not None:
-        gc.set_smooth_cost(pairwise_cost)
-
-    # initialize labels
-    if init_labels is not None:
-        for i in range(n_sites):
-            gc.init_label_at_site(i, init_labels[i])
-
-    if algorithm == 'expansion':
-        gc.expansion(n_iter)
-    else:
-        gc.swap(n_iter)
-
-    labels = gc.get_labels()
-    gc.destroy_graph()
-
-    return labels
 
 
 def get_images_edges_vh(height, width):
@@ -410,103 +295,6 @@ def get_images_edges_diag(height, width):
 
     return dr_edges_from, dl_edges_from, dr_edges_to, dl_edges_to
 
-
-def cut_grid_graph(unary_cost, pairwise_cost, cost_v, cost_h, cost_dr=None,
-                   cost_dl=None, n_iter=-1, algorithm='expansion'):
-    """
-    Apply multi-label graphcuts to grid graph.
-
-    Parameters
-    ----------
-    unary_cost: ndarray, int32, shape=(height, width, n_labels)
-        Unary potentials
-    pairwise_cost: ndarray, int32, shape=(n_labels, n_labels)
-        Pairwise potentials for label compatibility
-    cost_v: ndarray, int32, shape=(height-1, width)
-        Vertical edge weights.
-        cost_v[i,j] is the edge weight between (i,j) and (i+1,j)
-    cost_h: ndarray, int32, shape=(height, width-1)
-        Horizontal edge weights.
-        cost_h[i,j] is the edge weight between (i,j) and (i,j+1)
-    cost_dr: ndarray, int32, shape=(height-1, width-1)
-        Diagonal edge weights.
-        cost_dr[i,j] is the edge weight between (i,j) and (i+1,j+1)
-    cost_dl: ndarray, int32, shape=(height-1, width-1)
-        Diagonal edge weights.
-        cost_dl[i,j] is the edge weight between (i,j+1) and (i+1,j)
-    n_iter: int, (default=-1)
-        Number of iterations.
-        Set it to -1 will run the algorithm until convergence
-    algorithm: string, `expansion` or `swap`, default=expansion
-        Whether to perform alpha-expansion or alpha-beta-swaps.
-
-    Note all the node indices start from 0.
-    """
-    energy_is_float = (unary_cost.dtype in _float_types) or \
-                      (pairwise_cost.dtype in _float_types) or \
-                      (cost_v.dtype in _float_types) or \
-                      (cost_h.dtype in _float_types)
-
-    if not energy_is_float and not (
-        (unary_cost.dtype in _int_types) and
-        (pairwise_cost.dtype in _int_types) and
-            (cost_v.dtype in _int_types) and
-            (cost_h.dtype in _int_types)):
-        raise DataTypeNotSupportedError(
-            "Unary and pairwise potentials should have consistent types. "
-            "Either integers of floats. Mixed types or other types are not "
-            "supported.")
-
-    height, width, n_labels = unary_cost.shape
-
-    gc = GCO()
-    gc.create_general_graph(height * width, n_labels, energy_is_float)
-    gc.set_data_cost(unary_cost.reshape([height * width, n_labels]))
-
-    v_edges_from, h_edges_from, v_edges_to, h_edges_to = \
-        get_images_edges_vh(height, width)
-    v_edges_w = cost_v.flatten()
-    assert len(v_edges_from) == len(v_edges_w), \
-        'different sizes of edges %i and weights %i' \
-        % (len(v_edges_from), len(v_edges_w))
-    h_edges_w = cost_h.flatten()
-    assert len(h_edges_from) == len(h_edges_w), \
-        'different sizes of edges %i and weights %i' \
-        % (len(h_edges_from), len(h_edges_w))
-
-    edges_from = np.r_[v_edges_from, h_edges_from]
-    edges_to = np.r_[v_edges_to, h_edges_to]
-    edges_w = np.r_[v_edges_w, h_edges_w]
-
-    if cost_dr is not None and cost_dl is not None:
-        dr_edges_from, dl_edges_from, dr_edges_to, dl_edges_to = \
-            get_images_edges_diag(height, width)
-        dr_edges_w = cost_dr.flatten()
-        assert len(dr_edges_from) == len(dr_edges_w), \
-            'different sizes of edges %i and weights %i' \
-            % (len(dr_edges_from), len(dr_edges_w))
-        dl_edges_w = cost_dl.flatten()
-        assert len(dl_edges_from) == len(dl_edges_w), \
-            'different sizes of edges %i and weights %i' \
-            % (len(dl_edges_from), len(dl_edges_w))
-
-        edges_from = np.r_[edges_from, dr_edges_from, dl_edges_from]
-        edges_to = np.r_[edges_to, dr_edges_to, dl_edges_to]
-        edges_w = np.r_[edges_w, dr_edges_w, dl_edges_w]
-
-    gc.set_all_neighbors(edges_from, edges_to, edges_w)
-
-    gc.set_smooth_cost(pairwise_cost)
-
-    if algorithm == 'expansion':
-        gc.expansion(n_iter)
-    else:
-        gc.swap(n_iter)
-
-    labels = gc.get_labels()
-    gc.destroy_graph()
-
-    return labels
 
 
 def cut_grid_graph_simple(unary_cost, pairwise_cost, n_iter=-1,

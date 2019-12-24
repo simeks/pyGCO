@@ -30,12 +30,12 @@ _site_id_type = ct.c_int
 _site_ptr_type = np.ctypeslib.ndpointer(dtype=np.intc)
 _label_id_type = ct.c_int
 _label_ptr_type = np.ctypeslib.ndpointer(dtype=np.intc)
-_energy_term_type = ct.c_int
-_energy_term_ptr_type = np.ctypeslib.ndpointer(dtype=np.intc)
+_energy_term_type = ct.c_double
+_energy_term_ptr_type = np.ctypeslib.ndpointer(dtype=np.double)
 # _energy_type = ct.c_int       # if energy32 is set
-_energy_type = ct.c_longlong    # default type long long
+_energy_type = ct.c_double    # default type long long
 # _energy_ptr_type = np.ctypeslib.ndpointer(dtype=np.intc)
-_energy_ptr_type = np.ctypeslib.ndpointer(dtype=np.longlong)
+_energy_ptr_type = np.ctypeslib.ndpointer(dtype=np.double)
 _success_ptr_type = np.ctypeslib.ndpointer(dtype=np.intc)
 
 _SMOOTH_COST_FN = ct.CFUNCTYPE(_energy_term_type, ct.c_int, ct.c_int,
